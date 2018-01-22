@@ -5,74 +5,75 @@
  */
 
 (function(window, angular) {
-	'use strict';
+  'use strict';
 
-	angular.module('vimeoEmbed', [])
-	.directive('vimeoVideo', function (VimeoService) {
+  angular.module('vimeoEmbed', [])
+    .directive('vimeoVideo', ['VimeoService', vimeoVideo])
 
-		return {
-			restrict: 'EA',
-			replace: true,
-			scope: {
-				videoId: '=',
-				videoUrl: '=',
-				playerOpts: '=',
-				playerHeight: '=',
-				playerWidth: '=',
-				api: '='
-			},
-			link: function (scope, element, attrs, ctrl) {
-				
-				var playerId = attrs.playerId || element[0].id;
-				element[0].id = playerId;
+    .factory('VimeoService', ['$http', '$sce', VimeoService]);
 
-				var videoUrl = scope.videoId ? 'https://vimeo.com/' + scope.videoId : scope.videoUrl,
-				params = '?url=' + encodeURIComponent(videoUrl) + '&player_id=' + playerId,
-				options = scope.playerOpts || null;
+  function vimeoVideo(VimeoService) {
 
-				if (scope.playerWidth) { params += '&width=' + scope.playerWidth; }
-				if (scope.playerHeight) { params += '&height=' + scope.playerHeight; }
-				if (scope.api) { params += '&api=1'; }
+    return {
+      restrict: 'EA',
+      replace: true,
+      scope: {
+        videoId: '=',
+        videoUrl: '=',
+        playerOpts: '=',
+        playerHeight: '=',
+        playerWidth: '=',
+        api: '='
+      },
+      link: function(scope, element, attrs, ctrl) {
 
-				//If params obj is passed, loop through object keys and append query param
-				if (options)  {
-					for (var prop in options) {
-						params += '&' + prop + '=' + options[prop];
-					}
-				}
+        var playerId = attrs.playerId || element[0].id;
+        element[0].id = playerId;
 
-				console.log(params);
-				VimeoService.oEmbed(params).then(function (data) {
-					element.html(data.html);
-				}).catch(function(err){
-					element.html('<div>Failed to retreive video.</div>');
-				});
+        var videoUrl = scope.videoId ? 'https://vimeo.com/' + scope.videoId : scope.videoUrl,
+          params = '?url=' + encodeURIComponent(videoUrl) + '&player_id=' + playerId,
+          options = scope.playerOpts || null;
 
-			}
-		};
-	})
+        if (scope.playerWidth) { params += '&width=' + scope.playerWidth; }
+        if (scope.playerHeight) { params += '&height=' + scope.playerHeight; }
+        if (scope.api) { params += '&api=1'; }
 
-	.factory('VimeoService', function ($q, $http, $sce) {
-		var endpoint = 'https://vimeo.com/api/oembed.json';
+        //If params obj is passed, loop through object keys and append query param
+        if (options) {
+          for (var prop in options) {
+            params += '&' + prop + '=' + options[prop];
+          }
+        }
 
-		return {
-			oEmbed: function (params) {
-				return $q(function(resolve,reject){
-					$http.jsonp($sce.trustAsResourceUrl(endpoint + params),{jsonpCallbackParam: 'callback'}).then(function(res) {
-						resolve(res.data);
-					}, function(error) {
-						reject(error);
-					}); 
-				});
-			}
-		};
+        VimeoService.oEmbed(params)
+          .then(function(data) {
+            element.html(data.html);
+          }).catch(function(error) {
+            console.error(error)
+            element.html('<div>Failed to retreive video.</div>');
+          });
 
-	});
+      }
+    };
+  }
+
+  function VimeoService($http, $sce) {
+    var endpoint = 'https://vimeo.com/api/oembed.json';
+
+    function oEmbed(params) {
+      return $http.jsonp($sce.trustAsResourceUrl(endpoint + params), { jsonpCallbackParam: 'callback' })
+        .then(function(res) {
+          return res.data;
+        })
+        .catch(function(error) {
+          throw error;
+        })
+    }
+
+
+    return {
+      oEmbed: oEmbed
+    };
+
+  }
 })(window, window.angular);
-
-
-
-
-
-
-
